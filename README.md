@@ -17,7 +17,7 @@ Set up in `settings.yaml`:
 - your JWT token for InNoHassle Accounts (get it from [here](https://api.innohassle.ru/accounts/v0/docs#/Tokens/generate_service_token_tokens_generate_service_token_get))
 
 ```bash
-uv run uvicorn src.omnidesk_bot.main:app --reload
+uv run uvicorn src.api.app:app --reload
 ```
 
 Test UI

@@ -13,9 +13,9 @@ from typing import Annotated, Optional
 import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 
-from inh_accounts_sdk import UserTokenData
-from src.omnidesk_bot.auth import get_current_user
-from src.omnidesk_bot.schemas import (
+from src.inh_accounts_sdk import UserTokenData
+from src.api.auth import get_current_user
+from src.api.schemas import (
     CaseSummary,
     CaseListResponse,
     CreateCaseRequest,
@@ -59,7 +59,7 @@ def _parse_cases(raw: dict) -> CaseListResponse:
 
 
 def _parse_messages(raw: dict) -> MessagesResponse:
-    from src.omnidesk_bot.schemas import Attachment
+    from src.api.schemas import Attachment
 
     messages = []
     total_count = int(raw.get("total_count", 0))

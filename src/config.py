@@ -24,7 +24,9 @@ class OmnideskSettings(BaseSettings):
 class Settings(BaseSettings):
     accounts: Optional[AccountsSettings] = None
     omnidesk: OmnideskSettings
-
+    app_root_path: str = ""
+    'Prefix for the API path (e.g. "/api/v0")'
+    
     @classmethod
     def from_yaml(cls, path: Path) -> "Settings":
         with open(path) as f:

@@ -1,12 +1,13 @@
+from src.config import settings
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.omnidesk_bot.omnidesk import make_omnidesk_client
-from src.omnidesk_bot.routers.cases import router as cases_router
-from inh_accounts_sdk import inh_accounts
+from src.api.omnidesk import make_omnidesk_client
+from src.api.routers.cases import router as cases_router
+from src.inh_accounts_sdk import inh_accounts
 
 
 @asynccontextmanager
@@ -25,6 +26,8 @@ app = FastAPI(
     description="Authenticated proxy between the customer portal and Omnidesk",
     version="0.1.0",
     lifespan=lifespan,
+    root_path=settings.app_root_path,
+    root_path_in_servers=False,
 )
 
 app.add_middleware(
