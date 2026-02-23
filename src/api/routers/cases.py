@@ -19,8 +19,10 @@ from src.api.schemas import (
     CaseSummary,
     CaseListResponse,
     CreateCaseRequest,
+    CreateCaseResponse,
     Message,
     MessagesResponse,
+    SendMessageResponse,
 )
 
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -110,12 +112,12 @@ async def _get_omnidesk_user_id(client: httpx.AsyncClient, email: str) -> Option
 
 # ── 1. Create a new case ──────────────────────────────────────────────────────
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=CreateCaseResponse)
 async def create_case(
     body: CreateCaseRequest,
     current_user: CurrentUser,
     client: OmnideskClient,
-) -> dict:
+) -> CreateCaseResponse:
     """Create a new support request on behalf of the authenticated portal user."""
     payload: dict = {
         "case": {
@@ -132,7 +134,20 @@ async def create_case(
 
     resp = await client.post("/cases.json", content=json.dumps(payload))
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()["case"]
+    return CreateCaseResponse(
+        case=CaseSummary(
+            case_id=data["case_id"],
+            case_number=data["case_number"],
+            subject=data["subject"],
+            status=data["status"],
+            priority=data["priority"],
+            channel=data["channel"],
+            created_at=data["created_at"],
+            updated_at=data["updated_at"],
+            user_id=data["user_id"],
+        )
+    )
 
 
 # ── 2. List the user's own cases ──────────────────────────────────────────────
@@ -187,7 +202,7 @@ async def get_messages(
 
 # ── 4. Send a message (with optional file attachments) ────────────────────────
 
-@router.post("/{case_id}/messages", status_code=status.HTTP_201_CREATED)
+@router.post("/{case_id}/messages", status_code=status.HTTP_201_CREATED, response_model=SendMessageResponse)
 async def send_message(
     case_id: int,
     current_user: CurrentUser,
@@ -195,7 +210,7 @@ async def send_message(
     content: str = Form(...),
     content_html: Optional[str] = Form(None),
     attachments: list[UploadFile] = File(default=[]),
-) -> dict:
+) -> SendMessageResponse:
     """
     Send a message to a case.
     Supports multipart/form-data with one or more file attachments.
@@ -253,4 +268,31 @@ async def send_message(
         )
 
     resp.raise_for_status()
-    return resp.json()
+    m = resp.json()["message"]
+
+    from src.api.schemas import Attachment
+
+    attachments_parsed = [
+        Attachment(
+            file_id=a["file_id"],
+            file_name=a["file_name"],
+            file_size=a["file_size"],
+            mime_type=a["mime_type"],
+            url=a["url"],
+        )
+        for a in m.get("attachments", [])
+    ]
+
+    return SendMessageResponse(
+        message=Message(
+            message_id=m["message_id"],
+            user_id=m.get("user_id", 0),
+            staff_id=m.get("staff_id", 0),
+            content=m.get("content", ""),
+            content_html=m.get("content_html", ""),
+            attachments=attachments_parsed,
+            note=m.get("note", False),
+            created_at=m["created_at"],
+            full_name=m.get("full_name"),
+        )
+    )

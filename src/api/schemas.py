@@ -53,6 +53,7 @@ class Message(BaseModel):
     attachments: list[Attachment]
     note: bool
     created_at: str
+    full_name: Optional[str] = None
 
 
 class CaseListResponse(BaseModel):
@@ -63,6 +64,14 @@ class CaseListResponse(BaseModel):
 class MessagesResponse(BaseModel):
     messages: list[Message]
     total_count: int
+
+
+class CreateCaseResponse(BaseModel):
+    case: CaseSummary
+
+
+class SendMessageResponse(BaseModel):
+    message: Message
 
 
 class OmnideskRaw(BaseModel):
