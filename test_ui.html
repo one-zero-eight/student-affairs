@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omnidesk Portal Chat</title>
+  <style>
+    :root {
+      --bg-dark: #1e1e24;
+      --bg-panel: #2b2b36;
+      --bg-bubble-user: #4493f8;
+      --bg-bubble-staff: #3d3d4b;
+      --text-main: #e6edf3;
+      --text-muted: #8b949e;
+      --border: #444c56;
+      --accent: #4493f8;
+      --accent-hover: #3178c6;
+      --danger: #f85149;
+      --success: #3fb950;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Modal for Setup */
+    #setup-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: var(--bg-panel);
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .modal-content h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; text-align: center; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-block;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-full { width: 100%; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+    .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+    /* Main Layout */
+    #sidebar {
+      width: 320px;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sidebar-header h2 { font-size: 16px; font-weight: 600; }
+    .case-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .case-item {
+      padding: 15px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .case-item:hover { background: rgba(255,255,255,0.03); }
+    .case-item.active { background: rgba(68, 147, 248, 0.1); border-left: 3px solid var(--accent); }
+    .case-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .case-meta { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; }
+    .status-badge {
+      padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase;
+    }
+    .status-open { background: rgba(63, 185, 80, 0.2); color: var(--success); }
+    .status-waiting { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+    .status-closed { background: rgba(248, 81, 73, 0.2); color: var(--danger); }
+
+    #chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-dark);
+      position: relative;
+    }
+    .chat-header {
+      padding: 20px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-header h2 { font-size: 16px; font-weight: 600; }
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .message {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      position: relative;
+    }
+    .message-user {
+      align-self: flex-end;
+      background: var(--bg-bubble-user);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .message-staff {
+      align-self: flex-start;
+      background: var(--bg-bubble-staff);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+    }
+    .message-meta {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-top: 6px;
+      text-align: right;
+    }
+    .attachments { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .attachment-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      color: inherit;
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .attachment-link:hover { background: rgba(0,0,0,0.3); }
+
+    .chat-input-container {
+      padding: 20px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+    }
+    .chat-input-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    .chat-input-wrapper textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      max-height: 120px;
+      min-height: 24px;
+    }
+    .chat-input-wrapper textarea:focus { outline: none; }
+    
+    .file-input-wrapper {
+      position: relative;
+      cursor: pointer;
+    }
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer;
+    }
+    .icon-btn {
+      background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px;
+      display: flex; align-items: center; justify-content: center; border-radius: 4px;
+    }
+    .icon-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+    .send-btn { color: var(--accent); }
+    .send-btn:hover { color: var(--accent-hover); }
+
+    .empty-state {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 15px; flex-direction: column; gap: 10px;
+    }
+
+    #file-preview {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .file-chip {
+      background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px;
+      padding: 4px 10px; font-size: 11px; display: flex; align-items: center; gap: 6px;
+    }
+    .file-chip span { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* New Chat Modal */
+    #new-chat-modal { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Setup Modal -->
+  <div id="setup-modal">
+    <div class="modal-content">
+      <h2>Portal Login</h2>
+      <div class="form-group">
+        <label>API Base URL</label>
+        <input type="url" id="api-base" value="http://localhost:8000">
+      </div>
+      <div class="form-group">
+        <label>JWT Token</label>
+        <textarea id="jwt-token" rows="4" placeholder="Paste your JWT token here"></textarea>
+      </div>
+      <button class="btn btn-full" id="btn-connect" onclick="connect()">Connect</button>
+      <div id="setup-error" style="color: var(--danger); font-size: 12px; margin-top: 10px; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- New Chat Modal -->
+  <div id="new-chat-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:900;align-items:center;justify-content:center;">
+    <div class="modal-content">
+      <h2>Start New Chat</h2>
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" id="new-chat-subject" placeholder="What do you need help with?">
+      </div>
+      <div class="form-group">
+        <label>Initial Message</label>
+        <textarea id="new-chat-content" rows="4" placeholder="Describe your issue in detail..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline btn-full" onclick="closeNewChatModal()">Cancel</button>
+        <button class="btn btn-full" id="btn-create-chat" onclick="createCase()">Start Chat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar: Cases List -->
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h2>Your Support Chats</h2>
+      <button class="icon-btn" onclick="openNewChatModal()" title="New Chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+    </div>
+    <div class="case-list" id="case-list">
+      <!-- Cases injected here -->
+    </div>
+  </div>
+
+  <!-- Main Chat Area -->
+  <div id="chat-area">
+    <div class="empty-state" id="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      Select a chat from the sidebar or start a new one
+    </div>
+
+    <div style="display:none; flex-direction:column; height:100%;" id="active-chat">
+      <div class="chat-header">
+        <div>
+          <h2 id="active-chat-subject">Subject</h2>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+            Case #<span id="active-chat-number"></span> • <span id="active-chat-status" class="status-badge"></span>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="fetchMessages()" title="Refresh">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path></svg>
+        </button>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <!-- Messages injected here -->
+      </div>
+
+      <div class="chat-input-container">
+        <div id="file-preview"></div>
+        <div class="chat-input-wrapper">
+          <div class="file-input-wrapper">
+            <button class="icon-btn" title="Attach file">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+            </button>
+            <input type="file" id="chat-files" multiple onchange="updateFilePreview()">
+          </div>
+          <textarea id="chat-input" placeholder="Type a message..." rows="1" oninput="autoExpand(this)" onkeydown="handleEnter(event)"></textarea>
+          <button class="icon-btn send-btn" id="btn-send-msg" onclick="sendMessage()" title="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let API_BASE = "";
+  let JWT = "";
+  let activeCaseId = null;
+  let currentUserEmail = "";
+
+  function authHeaders() {
+    return { 'Authorization': `Bearer ${JWT}` };
+  }
+
+  // --- Setup & Init ---
+  async function connect() {
+    const baseInput = document.getElementById('api-base').value.trim();
+    const jwtInput = document.getElementById('jwt-token').value.trim();
+    if (!baseInput || !jwtInput) {
+      document.getElementById('setup-error').innerText = "Please provide both Base URL and JWT.";
+      return;
+    }
+
+    try {
+      // Decode JWT locally just to get email for visual debugging, actual validation is on backend
+      const parts = jwtInput.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+        currentUserEmail = payload.email || payload.uid || "User";
+      }
+    } catch(e) { console.warn("Failed to decode JWT locally."); }
+
+    API_BASE = baseInput.replace(/\/$/, '');
+    JWT = jwtInput;
+
+    const connectBtn = document.getElementById('btn-connect');
+    connectBtn.disabled = true;
+    connectBtn.innerText = "Connecting...";
+
+    // Test API
+    try {
+      const res = await fetch(`${API_BASE}/cases?limit=1`, { headers: authHeaders() });
+      if (res.ok) {
+        document.getElementById('setup-modal').style.display = 'none';
+        fetchCases();
+      } else {
+        const err = await res.json();
+        document.getElementById('setup-error').innerText = err.detail || "Authentication failed.";
+        connectBtn.disabled = false;
+        connectBtn.innerText = "Connect";
+      }
+    } catch(e) {
+      document.getElementById('setup-error').innerText = "Network error connecting to API.";
+      connectBtn.disabled = false;
+      connectBtn.innerText = "Connect";
+    }
+  }
+
+  // --- API Calls ---
+  async function fetchCases() {
+    try {
+      const res = await fetch(`${API_BASE}/cases?sort=updated_at_desc`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        renderCaseList(data.cases || []);
+      }
+    } catch(e) { console.error("Failed to list cases", e); }
+  }
+
+  async function fetchMessages(autoScroll = true) {
+    if (!activeCaseId) return;
+    try {
+      // API currently expects user_email? No, our router uses JWT.
+      const res = await fetch(`${API_BASE}/cases/${activeCaseId}/messages?order=asc`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        renderMessages(data.messages || [], autoScroll);
+      }
+    } catch(e) { console.error("Failed to fetch messages", e); }
+  }
+
+  // --- Rendering ---
+  function renderCaseList(cases) {
+    const list = document.getElementById('case-list');
+    list.innerHTML = "";
+    if (cases.length === 0) {
+      list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">No chats found. Start a new one!</div>`;
+      return;
+    }
+
+    cases.forEach(c => {
+      const el = document.createElement('div');
+      el.className = `case-item ${c.case_id === activeCaseId ? 'active' : ''}`;
+      el.onclick = () => selectCase(c);
+      
+      const d = new Date(c.updated_at).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+      
+      el.innerHTML = `
+        <div class="case-title">${escapeHTMl(c.subject)}</div>
+        <div class="case-meta">
+          <span>#${c.case_number} • ${d}</span>
+          <span class="status-badge status-${c.status.toLowerCase()}">${c.status}</span>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  function selectCase(c) {
+    activeCaseId = c.case_id;
+    
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('active-chat').style.display = 'flex';
+    
+    document.getElementById('active-chat-subject').innerText = c.subject;
+    document.getElementById('active-chat-number').innerText = c.case_number;
+    
+    const statusEl = document.getElementById('active-chat-status');
+    statusEl.innerText = c.status;
+    statusEl.className = `status-badge status-${c.status.toLowerCase()}`;
+    
+    // Update active class in sidebar
+    document.querySelectorAll('.case-item').forEach(item => {
+      item.classList.remove('active');
+      if (item.innerHTML.includes(`#${c.case_number} `)) item.classList.add('active');
+    });
+
+    document.getElementById('chat-messages').innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:20px;">Loading messages...</div>`;
+    fetchMessages(true);
+  }
+
+  function renderMessages(messages, doScroll) {
+    const container = document.getElementById('chat-messages');
+    container.innerHTML = "";
+    
+    if (messages.length === 0) {
+      container.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:20px;">No messages yet.</div>`;
+      return;
+    }
+
+    messages.forEach(m => {
+      // staff_id == 0 usually means it's from the user.
+      const isUser = m.staff_id === 0;
+      
+      const wrapper = document.createElement('div');
+      wrapper.className = `message ${isUser ? 'message-user' : 'message-staff'}`;
+      
+      // We'll prefer content_html if it's there and not empty, otherwise fallback to plain
+      let textContent = (m.content_html && m.content_html.trim() !== "") ? m.content_html : escapeHTMl(m.content);
+      // Fallback for empty messages (e.g. just files)
+      if (!textContent) textContent = "";
+
+      let attHtml = "";
+      if (m.attachments && m.attachments.length > 0) {
+        attHtml = `<div class="attachments">` + m.attachments.map(a => 
+          `<a href="${a.url}" target="_blank" class="attachment-link">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+            ${escapeHTMl(a.file_name)}
+          </a>`
+        ).join('') + `</div>`;
+      }
+      
+      const timeStr = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      wrapper.innerHTML = `
+        <div style="word-wrap: break-word;">${textContent}</div>
+        ${attHtml}
+        <div class="message-meta">${timeStr}</div>
+      `;
+      container.appendChild(wrapper);
+    });
+
+    if (doScroll) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  // --- Interaction ---
+  function autoExpand(field) {
+    field.style.height = 'inherit';
+    field.style.height = field.scrollHeight + 'px';
+  }
+
+  function handleEnter(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function updateFilePreview() {
+    const input = document.getElementById('chat-files');
+    const preview = document.getElementById('file-preview');
+    preview.innerHTML = "";
+    Array.from(input.files).forEach(f => {
+      preview.innerHTML += `<div class="file-chip">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+        <span>${escapeHTMl(f.name)}</span>
+      </div>`;
+    });
+  }
+
+  async function sendMessage() {
+    if (!activeCaseId) return;
+    const input = document.getElementById('chat-input');
+    const fileInput = document.getElementById('chat-files');
+    const btn = document.getElementById('btn-send-msg');
+    
+    const content = input.value.trim();
+    const files = fileInput.files;
+    
+    if (!content && files.length === 0) return;
+
+    btn.disabled = true;
+    input.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('content', content || "Attached files");
+      for (let i=0; i<files.length; i++) {
+        fd.append('attachments', files[i]);
+      }
+
+      const res = await fetch(`${API_BASE}/cases/${activeCaseId}/messages`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: fd
+      });
+
+      if (res.ok) {
+        input.value = "";
+        input.style.height = "inherit";
+        fileInput.value = "";
+        updateFilePreview();
+        await fetchMessages(true);
+      } else {
+        alert("Failed to send message.");
+      }
+    } catch(e) {
+      console.error(e);
+      alert("Network error sending message.");
+    } finally {
+      btn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  // --- New Chat Dialog ---
+  function openNewChatModal() { document.getElementById('new-chat-modal').style.display = 'flex'; }
+  function closeNewChatModal() { document.getElementById('new-chat-modal').style.display = 'none'; }
+  
+  async function createCase() {
+    const subj = document.getElementById('new-chat-subject').value.trim();
+    const content = document.getElementById('new-chat-content').value.trim();
+    
+    if (!subj || !content) { alert("Please provide both subject and initial message."); return; }
+    
+    const btn = document.getElementById('btn-create-chat');
+    btn.disabled = true;
+    btn.innerText = "Starting...";
+
+    try {
+      const res = await fetch(`${API_BASE}/cases`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: subj, content: content })
+      });
+      
+      if (res.ok) {
+        // Need to clear fields
+        document.getElementById('new-chat-subject').value = "";
+        document.getElementById('new-chat-content').value = "";
+        closeNewChatModal();
+        await fetchCases();
+        // The endpoint currently returns { "case": { case_id: ... } }
+        // Let's rely on fetchCases to show it at the top, and we could auto-select it.
+      } else {
+        alert("Failed to create chat.");
+      }
+    } catch(e) {
+      alert("Network error.");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Start Chat";
+    }
+  }
+
+  function escapeHTMl(str) {
+    if (!str) return "";
+    return str.replace(/[&<>'"]/g, tag => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
+  }
+</script>
+</body>
+</html>

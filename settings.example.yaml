@@ -1,0 +1,8 @@
+accounts:
+  api_url: "https://api.innohassle.ru/accounts/v0"
+  api_jwt_token: "your_service_jwt_token_here" # service-to-service bearer token
+
+omnidesk:
+  domain: "yourcompany" # subdomain, e.g. 'yourcompany' → yourcompany.omnidesk.ru
+  staff_email: "staff@company.ru"
+  api_key: "your_omnidesk_api_key"
