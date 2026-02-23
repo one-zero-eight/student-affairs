@@ -28,6 +28,9 @@ app = FastAPI(
     lifespan=lifespan,
     root_path=settings.app_root_path,
     root_path_in_servers=False,
+    servers=[
+        {"url": settings.app_root_path, "description": "Current"},
+]
 )
 
 app.add_middleware(
