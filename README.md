@@ -26,7 +26,7 @@ Test UI
 uv run python -m http.server 8001
 ```
 
-Open http://localhost:8001
+Open http://localhost:8001/test_ui.html
 (you can get your Innohassle JWT from [here](https://innohassle.ru/account/token))
 
 P.S. One-shot (vibecoded) by Sonnet 4.6, not inclined to write this glue by myself.
