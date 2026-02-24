@@ -36,7 +36,7 @@ async def generate_signin_link(
         "exp": expire,
         "email": current_user.email,
         "name": accounts_user.innopolis_info.name,
-        # "external_id": current_user.innohassle_id,  # Should we add this?
+        "external_id": current_user.innohassle_id,  # Should we add this?
     }
     encoded_jwt = jwt.encode({"alg": "HS256"}, payload, settings.omnidesk.jwt_marker.get_secret_value())
 
