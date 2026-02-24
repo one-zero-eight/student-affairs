@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.omnidesk import make_omnidesk_client
 from src.api.routers.cases import router as cases_router
+from src.api.routers.sso import router as sso_router
 from src.inh_accounts_sdk import inh_accounts
 
 
@@ -42,6 +43,7 @@ app.add_middleware(
 )
 
 app.include_router(cases_router)
+app.include_router(sso_router)
 
 
 @app.get("/health", tags=["health"])

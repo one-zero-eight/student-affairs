@@ -15,10 +15,19 @@ class OmnideskSettings(BaseSettings):
     domain: str
     staff_email: str
     api_key: SecretStr
+    jwt_marker: SecretStr
 
     @property
     def base_url(self) -> str:
         return f"https://{self.domain}.omnidesk.ru/api"
+
+    @property
+    def jwt_access_base_url(self) -> str:
+        return f"https://{self.domain}.omnidesk.ru/access/jwt"
+
+    @property
+    def default_redirect_to(self) -> str:
+        return f"https://{self.domain}.omnidesk.ru/user/cases/"
 
 
 class Settings(BaseSettings):
