@@ -1,28 +1,25 @@
 import datetime
 import urllib.parse
-from typing import Annotated
 
 import httpx
 from authlib.jose import jwt
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from src.api.auth import get_current_user
-
+from src.api.dependencies import USER_AUTH
 from src.config import settings
-from src.inh_accounts_sdk import UserTokenData, inh_accounts
+from src.modules.inh_accounts_sdk import inh_accounts
 
 router = APIRouter(prefix="/sso", tags=["sso"])
-CurrentUser = Annotated[UserTokenData, Depends(get_current_user)]
 
 
 @router.post("/generate-link")
 async def generate_signin_link(
-    current_user: CurrentUser,
+    current_user: USER_AUTH,
     return_to: str | None = None,
 ) -> str:
     """
     Create a link for user authentication.
-    https://support.omnidesk.ru/knowledge_base/item/54180?b_from_widget=1%3Fsid%3D2
+    https://support.omnidesk.ru/knowledge_base/item/54180
     """
 
     # Get user info

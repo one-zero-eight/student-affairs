@@ -1,51 +1,82 @@
-from src.config import settings
-from contextlib import asynccontextmanager
+__all__ = ["app"]
 
-import httpx
+
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.requests import Request
+from fastapi.responses import PlainTextResponse
+from fastapi_derive_responses import AutoDeriveResponsesAPIRoute
+from fastapi_swagger import patch_fastapi
+from pydantic import ValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
-from src.api.omnidesk import make_omnidesk_client
-from src.api.routers.cases import router as cases_router
-from src.api.routers.sso import router as sso_router
-from src.inh_accounts_sdk import inh_accounts
+import src.logging_  # noqa: F401
+from src.api import docs
+from src.api.lifespan import lifespan
+from src.config import settings
+from src.logging_ import logger
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Fetch JWKS from InNoHassle Accounts so the SDK can verify tokens
-    await inh_accounts.update_key_set()
-
-    # Keep a single Omnidesk client alive for the process lifetime
-    async with make_omnidesk_client() as client:
-        app.state.omnidesk_client = client
-        yield
-
-
+# App definition
 app = FastAPI(
-    title="Omnidesk Portal API",
-    description="Authenticated proxy between the customer portal and Omnidesk",
-    version="0.1.0",
-    lifespan=lifespan,
-    root_path=settings.app_root_path,
-    root_path_in_servers=False,
+    title="Student Affairs",
+    summary=docs.SUMMARY,
+    description=docs.DESCRIPTION,
+    version=docs.VERSION,
+    contact=docs.CONTACT_INFO,
+    license_info=docs.LICENSE_INFO,
+    openapi_tags=docs.TAGS_INFO,
     servers=[
         {"url": settings.app_root_path, "description": "Current"},
-]
+    ],
+    root_path=settings.app_root_path,
+    root_path_in_servers=False,
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    swagger_ui_oauth2_redirect_url=None,
 )
+app.router.route_class = AutoDeriveResponsesAPIRoute
+patch_fastapi(app)
 
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Log validation errors and return human-readable error message.
+    Based on https://github.com/dantetemplar/fastapi-how-to-log#exceptions
+    """
+    as_validation_error = ValidationError.from_exception_data(
+        str(request.url.path),
+        line_errors=exc.errors(),  # type: ignore
+    )
+    error_str = str(as_validation_error)
+    logger.warning(error_str, exc_info=False)
+    return PlainTextResponse(error_str, status_code=422)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """
+    Log raised HTTPException.
+    Based on https://github.com/dantetemplar/fastapi-how-to-log#exceptions
+    """
+    logger.warning(exc, exc_info=exc)
+    return await http_exception_handler(request, exc)
+
+
+# CORS settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # TODO: tighten in production
+    allow_origin_regex=settings.cors_allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(cases_router)
-app.include_router(sso_router)
+from src.modules.sso.routes import router as router_sso  # noqa: E402, I001
 
-
-@app.get("/health", tags=["health"])
-async def health() -> dict:
-    return {"status": "ok"}
+# Import routers above and include them below [do not edit this comment]
+app.include_router(router_sso)
+# ^
