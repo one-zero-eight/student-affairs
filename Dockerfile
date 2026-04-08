@@ -3,12 +3,9 @@
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
 # Install build dependencies for compiling native extensions (maybe needed only for apple silicon)
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    build-essential
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
