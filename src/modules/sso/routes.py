@@ -3,7 +3,7 @@ import urllib.parse
 
 import httpx
 from fastapi import APIRouter
-from joserfc import jwt
+from joserfc import jwk, jwt
 
 from src.api.dependencies import USER_AUTH
 from src.config import settings
@@ -35,7 +35,8 @@ async def generate_signin_link(
         "name": accounts_user.innopolis_info.name,
         "external_id": current_user.innohassle_id,  # Should we add this?
     }
-    encoded_jwt = jwt.encode({"alg": "HS256"}, payload, settings.omnidesk.jwt_marker.get_secret_value())
+    key = jwk.import_key(settings.omnidesk.jwt_marker.get_secret_value(), "oct")
+    encoded_jwt = jwt.encode({"alg": "HS256"}, payload, key)
 
     # Build endpoint for getting redirect link
     query_params = {
