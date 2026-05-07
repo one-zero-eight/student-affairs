@@ -2,7 +2,7 @@ import datetime
 import urllib.parse
 
 import httpx
-from authlib.jose import jwt
+from joserfc import jwt
 from fastapi import APIRouter
 
 from src.api.dependencies import USER_AUTH
