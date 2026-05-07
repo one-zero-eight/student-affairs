@@ -2,8 +2,8 @@ import datetime
 import urllib.parse
 
 import httpx
-from joserfc import jwt
 from fastapi import APIRouter
+from joserfc import jwt
 
 from src.api.dependencies import USER_AUTH
 from src.config import settings
